@@ -96,8 +96,8 @@ function SectionHeader({ title }: { title: string }) {
       fontWeight: 600,
       textTransform: 'uppercase',
       letterSpacing: '0.05em',
-      color: '#555',
-      borderBottom: '1px solid #e5e7eb',
+      color: 'var(--mantine-color-dimmed, #555)',
+      borderBottom: '1px solid var(--mantine-color-default-border, #e5e7eb)',
       paddingBottom: '4px',
     }}>
       {title}
@@ -192,7 +192,7 @@ function TransferCustodyForm({
       {error && <ErrorMsg msg={error} />}
 
       {currentCustodian && (
-        <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 10px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--mantine-color-dimmed, #6b7280)', margin: '0 0 10px' }}>
           Current custodian: <strong>{currentCustodian.company_detail.name}</strong> (since {fmtDate(currentCustodian.start_date)})
         </p>
       )}
@@ -360,7 +360,7 @@ function CloseInterestForm({
   return (
     <form onSubmit={submit} style={{ marginTop: 8 }}>
       {error && <ErrorMsg msg={error} />}
-      <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--mantine-color-dimmed, #6b7280)', margin: '0 0 8px' }}>
         Close interest for <strong>{interest.company_detail.name}</strong>
       </p>
       <label style={labelStyle}>End Date</label>
@@ -519,7 +519,7 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
   }
 
   if (loading) {
-    return <div style={{ padding: 16, color: '#6b7280', fontSize: 13 }}>Loading TRW Storage data…</div>;
+    return <div style={{ padding: 16, color: 'var(--mantine-color-dimmed, #6b7280)', fontSize: 13 }}>Loading TRW Storage data…</div>;
   }
 
   if (error) {
@@ -545,14 +545,14 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
 
         {activeCustodian ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <span style={{ fontWeight: 600, color: '#111' }}>{activeCustodian.company_detail.name}</span>
+            <span style={{ fontWeight: 600, color: 'var(--mantine-color-text, #111)' }}>{activeCustodian.company_detail.name}</span>
             <Badge label={`since ${fmtDate(activeCustodian.start_date)}`} color="#2563eb" />
             {activeCustodian.notes && (
-              <span style={{ color: '#9ca3af', fontSize: 11 }}>{activeCustodian.notes}</span>
+              <span style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 11 }}>{activeCustodian.notes}</span>
             )}
           </div>
         ) : (
-          <p style={{ color: '#9ca3af', fontSize: 12, margin: '0 0 8px' }}>No custodian assigned.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 12, margin: '0 0 8px' }}>No custodian assigned.</p>
         )}
 
         {activeForm === 'transfer-custody' && (
@@ -629,15 +629,15 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
         <SectionHeader title="Interests" />
 
         {activeInterests.length === 0 && (
-          <p style={{ color: '#9ca3af', fontSize: 12, margin: '0 0 8px' }}>No active interests.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 12, margin: '0 0 8px' }}>No active interests.</p>
         )}
 
         {activeInterests.map(interest => (
           <div key={interest.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontWeight: 600, color: '#111', minWidth: 140 }}>{interest.company_detail.name}</span>
+            <span style={{ fontWeight: 600, color: 'var(--mantine-color-text, #111)', minWidth: 140 }}>{interest.company_detail.name}</span>
             <Badge label={`since ${fmtDate(interest.start_date)}`} color="#059669" />
             {interest.notes && (
-              <span style={{ color: '#9ca3af', fontSize: 11 }}>{interest.notes}</span>
+              <span style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 11 }}>{interest.notes}</span>
             )}
             {activeForm === null && (
               <button
@@ -720,18 +720,20 @@ const inputStyle: React.CSSProperties = {
   display: 'block',
   width: '100%',
   padding: '5px 8px',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--mantine-color-default-border, #d1d5db)',
   borderRadius: 4,
   fontSize: 12,
   marginBottom: 8,
   boxSizing: 'border-box',
+  background: 'var(--mantine-color-body, #fff)',
+  color: 'var(--mantine-color-text, #111)',
 };
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 11,
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--mantine-color-dimmed, #374151)',
   marginBottom: 2,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
@@ -749,9 +751,9 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  background: '#f3f4f6',
-  color: '#374151',
-  border: '1px solid #d1d5db',
+  background: 'var(--mantine-color-default, #f3f4f6)',
+  color: 'var(--mantine-color-text, #374151)',
+  border: '1px solid var(--mantine-color-default-border, #d1d5db)',
   borderRadius: 4,
   padding: '5px 12px',
   fontSize: 12,
@@ -770,9 +772,9 @@ const btnDanger: React.CSSProperties = {
 };
 
 const btnSmall: React.CSSProperties = {
-  background: '#f3f4f6',
-  color: '#374151',
-  border: '1px solid #d1d5db',
+  background: 'var(--mantine-color-default, #f3f4f6)',
+  color: 'var(--mantine-color-text, #374151)',
+  border: '1px solid var(--mantine-color-default-border, #d1d5db)',
   borderRadius: 4,
   padding: '3px 10px',
   fontSize: 11,
@@ -799,15 +801,15 @@ const tableStyle: React.CSSProperties = {
 const thStyle: React.CSSProperties = {
   textAlign: 'left',
   padding: '3px 6px',
-  borderBottom: '1px solid #e5e7eb',
-  color: '#6b7280',
+  borderBottom: '1px solid var(--mantine-color-default-border, #e5e7eb)',
+  color: 'var(--mantine-color-dimmed, #6b7280)',
   fontWeight: 600,
 };
 
 const tdStyle: React.CSSProperties = {
   padding: '3px 6px',
-  borderBottom: '1px solid #f3f4f6',
-  color: '#374151',
+  borderBottom: '1px solid var(--mantine-color-default-border, #f3f4f6)',
+  color: 'var(--mantine-color-text, #374151)',
 };
 
 // ---------------------------------------------------------------------------
