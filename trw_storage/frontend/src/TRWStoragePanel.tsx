@@ -853,6 +853,7 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
 const inputStyle: React.CSSProperties = {
   display: 'block',
   width: '100%',
+  maxWidth: 320,
   padding: '5px 8px',
   border: '1px solid var(--mantine-color-default-border, #d1d5db)',
   borderRadius: 4,

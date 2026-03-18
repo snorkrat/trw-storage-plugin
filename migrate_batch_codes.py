@@ -26,6 +26,7 @@ The script will:
 import argparse
 import json
 import sys
+import time
 import unicodedata
 import re
 from datetime import date
@@ -40,6 +41,7 @@ parser.add_argument('--inventree-url', required=True, help='InvenTree base URL (
 parser.add_argument('--api-token', required=True, help='InvenTree API token')
 parser.add_argument('--dry-run', action='store_true', help='Preview without writing')
 parser.add_argument('--mapping', help='JSON file of manual name→company_id overrides')
+parser.add_argument('--delay', type=float, default=0.05, help='Seconds to wait between API requests (default: 0.05)')
 args = parser.parse_args()
 
 BASE = args.inventree_url.rstrip('/')
@@ -77,13 +79,45 @@ def paginate(url: str, params: dict = None) -> list:
     return all_results
 
 
-def post_plugin(endpoint: str, payload: dict) -> dict:
+MAX_RETRIES = 4
+
+def post_plugin(endpoint: str, payload: dict) -> dict | str | None:
+    """
+    POST to the plugin API with retry logic.
+    Returns:
+      dict   — success (new record created)
+      'skip' — record already exists (idempotent; not an error)
+      None   — genuine failure after all retries
+    """
     url = f'{BASE}/plugin/trw-storage/api/{endpoint}/'
-    r = requests.post(url, headers=HEADERS, json=payload)
-    if not r.ok:
-        print(f'  ERROR {r.status_code}: {r.text}')
+    time.sleep(args.delay)
+
+    for attempt in range(MAX_RETRIES):
+        r = requests.post(url, headers=HEADERS, json=payload)
+
+        if r.ok:
+            return r.json()
+
+        if r.status_code == 400:
+            text = r.text
+            # These mean the record is already in the DB — not an error.
+            if 'already has an active custodian' in text or 'must make a unique set' in text:
+                return 'skip'
+            print(f'  ERROR 400: {text}')
+            return None
+
+        # Rate-limited or transient server error — back off and retry.
+        if r.status_code in (403, 429, 500, 502, 503):
+            wait = 2 ** attempt  # 1s, 2s, 4s, 8s
+            print(f'  WARN {r.status_code} (attempt {attempt + 1}/{MAX_RETRIES}) — retrying in {wait}s…')
+            time.sleep(wait)
+            continue
+
+        print(f'  ERROR {r.status_code}: {r.text[:200]}')
         return None
-    return r.json()
+
+    print(f'  ERROR: gave up after {MAX_RETRIES} retries for {endpoint}')
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -215,13 +249,21 @@ def resolve(raw: str) -> int | None:
 print(f'\n{"[DRY RUN] " if args.dry_run else ""}Creating plugin records...\n')
 
 created_custodians = 0
-skipped_custodians = 0
+already_custodians = 0
+failed_custodians = 0
+unmatched_custodians = 0
 created_interests = 0
-skipped_interests = 0
+already_interests = 0
+failed_interests = 0
+unmatched_interests = 0
 
-for rec in records:
+total = len(records)
+for i, rec in enumerate(records, 1):
     pk = rec['stock_item_pk']
     start = rec['creation_date']
+
+    if i % 100 == 0 or i == total:
+        print(f'  Progress: {i}/{total}…')
 
     # Custodian
     custodian_id = resolve(rec['custodian_raw'])
@@ -236,13 +278,15 @@ for rec in records:
                 'start_date': start,
                 'notes': f'Migrated from batch code: {rec["custodian_raw"]}',
             })
-            if result:
+            if result == 'skip':
+                already_custodians += 1
+            elif result:
                 created_custodians += 1
             else:
-                skipped_custodians += 1
+                failed_custodians += 1
+                print(f'  FAILED custodian for stock_item={pk}')
     else:
-        print(f'  SKIP custodian for stock_item={pk}: no match for "{rec["custodian_raw"]}"')
-        skipped_custodians += 1
+        unmatched_custodians += 1
 
     # Interests
     for raw in rec['interest_raws']:
@@ -258,21 +302,26 @@ for rec in records:
                     'start_date': start,
                     'notes': f'Migrated from batch code: {raw}',
                 })
-                if result:
+                if result == 'skip':
+                    already_interests += 1
+                elif result:
                     created_interests += 1
                 else:
-                    skipped_interests += 1
+                    failed_interests += 1
+                    print(f'  FAILED interest for stock_item={pk}: {raw}')
         else:
-            print(f'  SKIP interest for stock_item={pk}: no match for "{raw}"')
-            skipped_interests += 1
+            unmatched_interests += 1
 
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 
 print(f'\n{"[DRY RUN] " if args.dry_run else ""}Done.')
-print(f'  Custodians: {created_custodians} created, {skipped_custodians} skipped')
-print(f'  Interests:  {created_interests} created, {skipped_interests} skipped')
+print(f'  Custodians: {created_custodians} created, {already_custodians} already existed, {unmatched_custodians} unmatched, {failed_custodians} failed')
+print(f'  Interests:  {created_interests} created, {already_interests} already existed, {unmatched_interests} unmatched, {failed_interests} failed')
+
+if failed_custodians or failed_interests:
+    print(f'\n  ⚠  {failed_custodians + failed_interests} record(s) failed after retries — check output above.')
 
 if args.dry_run:
     print('\nThis was a dry run — nothing was written to the database.')
