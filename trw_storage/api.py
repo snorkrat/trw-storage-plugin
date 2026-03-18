@@ -2,6 +2,7 @@ import datetime
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
 
@@ -15,6 +16,7 @@ from .serializers import (
 
 class TRWCustodianViewSet(viewsets.ModelViewSet):
     serializer_class = TRWCustodianSerializer
+    permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
@@ -104,6 +106,7 @@ class TRWCustodianViewSet(viewsets.ModelViewSet):
 
 class TRWInterestViewSet(viewsets.ModelViewSet):
     serializer_class = TRWInterestSerializer
+    permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):

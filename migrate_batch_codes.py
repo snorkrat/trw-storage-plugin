@@ -111,10 +111,23 @@ for c in customers:
 
 # 2. Fetch all stock items.
 print('Fetching stock items...')
-stock_items = paginate(f'{BASE}/api/stock/', {'in_stock': True})
-# Also fetch items with quantity 0 that might have been recently transferred.
 stock_items_all = paginate(f'{BASE}/api/stock/')
 print(f'  Got {len(stock_items_all)} stock item(s) total')
+
+# 2b. Fetch all stock tracking entries in bulk to find earliest event date per item.
+print('Fetching stock tracking history (to find creation dates)...')
+tracking_entries = paginate(f'{BASE}/api/stock/track/')
+print(f'  Got {len(tracking_entries)} tracking event(s)')
+
+# Build map: stock_item_pk -> earliest event date (YYYY-MM-DD)
+earliest_date: dict[int, str] = {}
+for entry in tracking_entries:
+    item_pk = entry.get('item')
+    raw_date = entry.get('date', '')
+    if item_pk and raw_date:
+        date_str = raw_date[:10]  # "YYYY-MM-DD HH:MM" -> "YYYY-MM-DD"
+        if item_pk not in earliest_date or date_str < earliest_date[item_pk]:
+            earliest_date[item_pk] = date_str
 
 # 3. Parse batch codes.
 unmatched_names: set[str] = set()
@@ -129,9 +142,8 @@ for item in stock_items_all:
     if not parts_raw:
         continue
 
-    # Resolve creation date — use first tracking event date or today as fallback.
-    # InvenTree stock items have a 'creation_date' field in some versions.
-    creation_date = item.get('creation_date') or str(date.today())
+    # Use earliest tracking event date as the creation date; fall back to today.
+    creation_date = earliest_date.get(item['pk']) or str(date.today())
 
     records.append({
         'stock_item_pk': item['pk'],
