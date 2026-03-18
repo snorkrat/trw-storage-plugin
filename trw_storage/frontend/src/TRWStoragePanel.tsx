@@ -811,18 +811,13 @@ const tdStyle: React.CSSProperties = {
 };
 
 // ---------------------------------------------------------------------------
-// Entry point — InvenTree calls renderPanel(context, element)
+// Entry point — InvenTree loads this as an ES module and calls renderPanel(element, context)
 // ---------------------------------------------------------------------------
 
-declare global {
-  interface Window {
-    renderPanel?: (context: PanelContext, element: HTMLElement) => void;
-  }
-}
-
-// InvenTree calls renderPanel(element, context) where context.context holds our custom data.
-window.renderPanel = function (element: HTMLElement, context: any) {
+// Named export: InvenTree does `await import(url)` then calls `module['renderPanel'](element, ctx)`
+// func.length > 1 → InvenTree uses legacy mode: func(element, ctx)
+export function renderPanel(element: HTMLElement, context: any) {
   const panelContext: PanelContext = context?.context ?? context;
   const root = createRoot(element);
   root.render(<TRWStoragePanelInner {...panelContext} />);
-};
+}

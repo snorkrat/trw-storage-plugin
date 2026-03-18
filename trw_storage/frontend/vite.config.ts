@@ -7,9 +7,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/TRWStoragePanel.tsx'),
-      name: 'TRWStoragePanel',
       fileName: () => 'trw-storage-panel.js',
-      formats: ['iife'],
+      formats: ['es'],
     },
     rollupOptions: {},
     outDir: path.resolve(__dirname, '../static/trw_storage'),
