@@ -820,9 +820,9 @@ declare global {
   }
 }
 
-// InvenTree's UI Mixin will call window.renderPanel with the context object
-// and a DOM element to render into.
-window.renderPanel = function (context: PanelContext, element: HTMLElement) {
+// InvenTree calls renderPanel(element, context) where context.context holds our custom data.
+window.renderPanel = function (element: HTMLElement, context: any) {
+  const panelContext: PanelContext = context?.context ?? context;
   const root = createRoot(element);
-  root.render(<TRWStoragePanelInner {...context} />);
+  root.render(<TRWStoragePanelInner {...panelContext} />);
 };
