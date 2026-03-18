@@ -39,8 +39,8 @@ class TRWStoragePlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin)
         if context is None:
             return panels
 
-        target_model = context.get('model', '')
-        target_id = context.get('pk', None)
+        target_model = context.get('target_model', '')
+        target_id = context.get('target_id', None)
 
         if target_model == 'stockitem' and target_id is not None:
             panels.append({
