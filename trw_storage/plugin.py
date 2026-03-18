@@ -21,7 +21,7 @@ class TRWStoragePlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin)
     SLUG = 'trw-storage'
     TITLE = 'TRW Storage Assignments'
     DESCRIPTION = 'Track custodians and interests for stock items at The Roast Works.'
-    VERSION = '1.0.3'
+    VERSION = '1.0.4'
     AUTHOR = 'The Roast Works'
 
     # AppMixin: tells InvenTree which Django app to load
