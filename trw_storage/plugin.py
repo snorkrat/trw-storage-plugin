@@ -21,7 +21,7 @@ class TRWStoragePlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin)
     SLUG = 'trw-storage'
     TITLE = 'TRW Storage Assignments'
     DESCRIPTION = 'Track custodians and interests for stock items at The Roast Works.'
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
     AUTHOR = 'The Roast Works'
 
     # AppMixin: tells InvenTree which Django app to load
@@ -44,9 +44,9 @@ class TRWStoragePlugin(AppMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin)
 
         if target_model == 'stockitem' and target_id is not None:
             panels.append({
-                'name': 'trw-storage',
-                'label': 'TRW Storage',
-                'icon': 'tabler:building-warehouse',
+                'key': 'trw-storage',
+                'title': 'TRW Storage',
+                'icon': 'ti:building-warehouse:outline',
                 'source': '/plugin/trw-storage/panel.js',
                 'context': {
                     'stockItemId': target_id,
