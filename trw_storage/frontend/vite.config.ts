@@ -14,11 +14,12 @@ export default defineConfig({
     rollupOptions: {
       // InvenTree already has React in scope; externalise to avoid double-loading.
       // If your InvenTree version does NOT provide React globally, remove these externals.
-      external: ['react', 'react-dom'],
+      external: ['react', 'react-dom', 'react-dom/client'],
       output: {
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
+          'react-dom/client': 'ReactDOM',
         },
       },
     },

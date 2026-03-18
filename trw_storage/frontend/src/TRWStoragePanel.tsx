@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -822,7 +823,6 @@ declare global {
 // InvenTree's UI Mixin will call window.renderPanel with the context object
 // and a DOM element to render into.
 window.renderPanel = function (context: PanelContext, element: HTMLElement) {
-  const { createRoot } = require('react-dom/client') as typeof import('react-dom/client');
   const root = createRoot(element);
   root.render(<TRWStoragePanelInner {...context} />);
 };
