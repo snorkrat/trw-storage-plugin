@@ -322,6 +322,68 @@ function AddInterestForm({
 }
 
 // ---------------------------------------------------------------------------
+// Remove Custody Form (sets end_date on active custodian)
+// ---------------------------------------------------------------------------
+
+function RemoveCustodyForm({
+  apiBase,
+  custodian,
+  onDone,
+  onCancel,
+}: {
+  apiBase: string;
+  custodian: Custodian;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [endDate, setEndDate] = useState(today());
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await apiFetch(`${apiBase}/custodians/${custodian.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ end_date: endDate }),
+      });
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ marginTop: 8 }}>
+      {error && <ErrorMsg msg={error} />}
+      <p style={{ fontSize: '12px', color: 'var(--mantine-color-dimmed, #6b7280)', margin: '0 0 8px' }}>
+        Remove custody for <strong>{custodian.company_detail.name}</strong>
+      </p>
+      <label style={labelStyle}>End Date</label>
+      <input
+        type="date"
+        value={endDate}
+        onChange={e => setEndDate(e.target.value)}
+        style={inputStyle}
+        required
+        min={custodian.start_date}
+        max={today()}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button type="submit" disabled={loading} style={btnDanger}>
+          {loading ? 'Removing…' : 'Remove Custody'}
+        </button>
+        <button type="button" onClick={onCancel} style={btnSecondary}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Close Interest Form (sets end_date)
 // ---------------------------------------------------------------------------
 
@@ -477,6 +539,7 @@ type ActiveForm =
   | null
   | 'set-custodian'
   | 'transfer-custody'
+  | 'remove-custody'
   | { type: 'close-interest'; interest: Interest }
   | 'add-interest';
 
@@ -489,6 +552,8 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
   const [activeForm, setActiveForm] = useState<ActiveForm>(null);
   const [showCustodianHistory, setShowCustodianHistory] = useState(false);
   const [showInterestHistory, setShowInterestHistory] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'custodian' | 'interest'; id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -516,6 +581,21 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
   function afterFormDone() {
     setActiveForm(null);
     loadData();
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      const endpoint = confirmDelete.type === 'custodian' ? 'custodians' : 'interests';
+      await apiFetch(`${apiBase}/${endpoint}/${confirmDelete.id}/`, { method: 'DELETE' });
+      setConfirmDelete(null);
+      loadData();
+    } catch (err: any) {
+      setConfirmDelete(null);
+      setDeleting(false);
+    }
+    setDeleting(false);
   }
 
   if (loading) {
@@ -566,6 +646,15 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
           />
         )}
 
+        {activeForm === 'remove-custody' && activeCustodian && (
+          <RemoveCustodyForm
+            apiBase={apiBase}
+            custodian={activeCustodian}
+            onDone={afterFormDone}
+            onCancel={() => setActiveForm(null)}
+          />
+        )}
+
         {activeForm === 'set-custodian' && (
           <SetCustodianForm
             apiBase={apiBase}
@@ -579,9 +668,14 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
         {activeForm === null && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
             {activeCustodian ? (
-              <button onClick={() => setActiveForm('transfer-custody')} style={btnSmall}>
-                Transfer Custody
-              </button>
+              <>
+                <button onClick={() => setActiveForm('transfer-custody')} style={btnSmall}>
+                  Transfer Custody
+                </button>
+                <button onClick={() => setActiveForm('remove-custody')} style={{ ...btnSmall, color: '#dc2626', borderColor: '#fca5a5' }}>
+                  Remove Custody
+                </button>
+              </>
             ) : (
               <button onClick={() => setActiveForm('set-custodian')} style={btnSmall}>
                 Set Custodian
@@ -599,26 +693,46 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
               {showCustodianHistory ? 'Hide' : 'Show'} history ({pastCustodians.length})
             </button>
             {showCustodianHistory && (
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Company</th>
-                    <th style={thStyle}>From</th>
-                    <th style={thStyle}>To</th>
-                    <th style={thStyle}>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pastCustodians.map(c => (
-                    <tr key={c.id}>
-                      <td style={tdStyle}>{c.company_detail.name}</td>
-                      <td style={tdStyle}>{fmtDate(c.start_date)}</td>
-                      <td style={tdStyle}>{fmtDate(c.end_date)}</td>
-                      <td style={{ ...tdStyle, color: '#9ca3af' }}>{c.notes || '—'}</td>
+              <>
+                {confirmDelete?.type === 'custodian' && (
+                  <div style={confirmBannerStyle}>
+                    <span>Delete <strong>{confirmDelete.name}</strong> record permanently?</span>
+                    <button onClick={handleDelete} disabled={deleting} style={{ ...btnDanger, padding: '2px 8px', fontSize: 11 }}>
+                      {deleting ? 'Deleting…' : 'Delete'}
+                    </button>
+                    <button onClick={() => setConfirmDelete(null)} style={{ ...btnSecondary, padding: '2px 8px', fontSize: 11 }}>Cancel</button>
+                  </div>
+                )}
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Company</th>
+                      <th style={thStyle}>From</th>
+                      <th style={thStyle}>To</th>
+                      <th style={thStyle}>Notes</th>
+                      <th style={thStyle}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pastCustodians.map(c => (
+                      <tr key={c.id}>
+                        <td style={tdStyle}>{c.company_detail.name}</td>
+                        <td style={tdStyle}>{fmtDate(c.start_date)}</td>
+                        <td style={tdStyle}>{fmtDate(c.end_date)}</td>
+                        <td style={{ ...tdStyle, color: 'var(--mantine-color-dimmed, #9ca3af)' }}>{c.notes || '—'}</td>
+                        <td style={tdStyle}>
+                          <button
+                            onClick={() => setConfirmDelete({ type: 'custodian', id: c.id, name: c.company_detail.name })}
+                            style={{ ...btnLink, color: '#dc2626', fontSize: 11 }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         )}
@@ -684,26 +798,46 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
               {showInterestHistory ? 'Hide' : 'Show'} closed interests ({pastInterests.length})
             </button>
             {showInterestHistory && (
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Company</th>
-                    <th style={thStyle}>From</th>
-                    <th style={thStyle}>To</th>
-                    <th style={thStyle}>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pastInterests.map(i => (
-                    <tr key={i.id}>
-                      <td style={tdStyle}>{i.company_detail.name}</td>
-                      <td style={tdStyle}>{fmtDate(i.start_date)}</td>
-                      <td style={tdStyle}>{fmtDate(i.end_date)}</td>
-                      <td style={{ ...tdStyle, color: '#9ca3af' }}>{i.notes || '—'}</td>
+              <>
+                {confirmDelete?.type === 'interest' && (
+                  <div style={confirmBannerStyle}>
+                    <span>Delete <strong>{confirmDelete.name}</strong> record permanently?</span>
+                    <button onClick={handleDelete} disabled={deleting} style={{ ...btnDanger, padding: '2px 8px', fontSize: 11 }}>
+                      {deleting ? 'Deleting…' : 'Delete'}
+                    </button>
+                    <button onClick={() => setConfirmDelete(null)} style={{ ...btnSecondary, padding: '2px 8px', fontSize: 11 }}>Cancel</button>
+                  </div>
+                )}
+                <table style={tableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Company</th>
+                      <th style={thStyle}>From</th>
+                      <th style={thStyle}>To</th>
+                      <th style={thStyle}>Notes</th>
+                      <th style={thStyle}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pastInterests.map(i => (
+                      <tr key={i.id}>
+                        <td style={tdStyle}>{i.company_detail.name}</td>
+                        <td style={tdStyle}>{fmtDate(i.start_date)}</td>
+                        <td style={tdStyle}>{fmtDate(i.end_date)}</td>
+                        <td style={{ ...tdStyle, color: 'var(--mantine-color-dimmed, #9ca3af)' }}>{i.notes || '—'}</td>
+                        <td style={tdStyle}>
+                          <button
+                            onClick={() => setConfirmDelete({ type: 'interest', id: i.id, name: i.company_detail.name })}
+                            style={{ ...btnLink, color: '#dc2626', fontSize: 11 }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         )}
@@ -789,6 +923,20 @@ const btnLink: React.CSSProperties = {
   padding: 0,
   textDecoration: 'underline',
   fontSize: 12,
+};
+
+const confirmBannerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  background: '#fef2f2',
+  border: '1px solid #fecaca',
+  borderRadius: 4,
+  padding: '5px 8px',
+  fontSize: 12,
+  marginTop: 6,
+  marginBottom: 4,
+  color: '#b91c1c',
 };
 
 const tableStyle: React.CSSProperties = {
