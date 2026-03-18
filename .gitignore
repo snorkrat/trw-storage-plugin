@@ -1,0 +1,7 @@
+trw_storage/frontend/node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.DS_Store
