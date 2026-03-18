@@ -322,6 +322,152 @@ function AddInterestForm({
 }
 
 // ---------------------------------------------------------------------------
+// Edit Custodian Form (PATCH company, start_date, notes)
+// ---------------------------------------------------------------------------
+
+function EditCustodianForm({
+  apiBase,
+  custodian,
+  companies,
+  onDone,
+  onCancel,
+}: {
+  apiBase: string;
+  custodian: Custodian;
+  companies: Company[];
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [company, setCompany] = useState(String(custodian.company));
+  const [startDate, setStartDate] = useState(custodian.start_date);
+  const [notes, setNotes] = useState(custodian.notes ?? '');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await apiFetch(`${apiBase}/custodians/${custodian.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ company: Number(company), start_date: startDate, notes }),
+      });
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ marginTop: 8 }}>
+      {error && <ErrorMsg msg={error} />}
+      <label style={labelStyle}>Custodian Company</label>
+      <select value={company} onChange={e => setCompany(e.target.value)} style={inputStyle} required>
+        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <label style={labelStyle}>Start Date</label>
+      <input
+        type="date"
+        value={startDate}
+        onChange={e => setStartDate(e.target.value)}
+        style={inputStyle}
+        required
+        max={today()}
+      />
+      <label style={labelStyle}>Notes (optional)</label>
+      <input
+        type="text"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+        style={inputStyle}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button type="submit" disabled={loading} style={btnPrimary}>
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button type="button" onClick={onCancel} style={btnSecondary}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edit Interest Form (PATCH company, start_date, notes)
+// ---------------------------------------------------------------------------
+
+function EditInterestForm({
+  apiBase,
+  interest,
+  companies,
+  onDone,
+  onCancel,
+}: {
+  apiBase: string;
+  interest: Interest;
+  companies: Company[];
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [company, setCompany] = useState(String(interest.company));
+  const [startDate, setStartDate] = useState(interest.start_date);
+  const [notes, setNotes] = useState(interest.notes ?? '');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await apiFetch(`${apiBase}/interests/${interest.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ company: Number(company), start_date: startDate, notes }),
+      });
+      onDone();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ marginTop: 8 }}>
+      {error && <ErrorMsg msg={error} />}
+      <label style={labelStyle}>Company</label>
+      <select value={company} onChange={e => setCompany(e.target.value)} style={inputStyle} required>
+        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <label style={labelStyle}>Start Date</label>
+      <input
+        type="date"
+        value={startDate}
+        onChange={e => setStartDate(e.target.value)}
+        style={inputStyle}
+        required
+        max={today()}
+      />
+      <label style={labelStyle}>Notes (optional)</label>
+      <input
+        type="text"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+        style={inputStyle}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button type="submit" disabled={loading} style={btnPrimary}>
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button type="button" onClick={onCancel} style={btnSecondary}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Remove Custody Form (sets end_date on active custodian)
 // ---------------------------------------------------------------------------
 
@@ -540,7 +686,9 @@ type ActiveForm =
   | 'set-custodian'
   | 'transfer-custody'
   | 'remove-custody'
+  | 'edit-custodian'
   | { type: 'close-interest'; interest: Interest }
+  | { type: 'edit-interest'; interest: Interest }
   | 'add-interest';
 
 function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
@@ -655,6 +803,16 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
           />
         )}
 
+        {activeForm === 'edit-custodian' && activeCustodian && (
+          <EditCustodianForm
+            apiBase={apiBase}
+            custodian={activeCustodian}
+            companies={companies}
+            onDone={afterFormDone}
+            onCancel={() => setActiveForm(null)}
+          />
+        )}
+
         {activeForm === 'set-custodian' && (
           <SetCustodianForm
             apiBase={apiBase}
@@ -671,6 +829,9 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
               <>
                 <button onClick={() => setActiveForm('transfer-custody')} style={btnSmall}>
                   Transfer Custody
+                </button>
+                <button onClick={() => setActiveForm('edit-custodian')} style={btnSmall}>
+                  Edit
                 </button>
                 <button onClick={() => setActiveForm('remove-custody')} style={{ ...btnSmall, color: '#dc2626', borderColor: '#fca5a5' }}>
                   Remove Custody
@@ -747,25 +908,45 @@ function TRWStoragePanelInner({ stockItemId, apiBase }: PanelContext) {
         )}
 
         {activeInterests.map(interest => (
-          <div key={interest.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontWeight: 600, color: 'var(--mantine-color-text, #111)', minWidth: 140 }}>{interest.company_detail.name}</span>
-            <Badge label={`since ${fmtDate(interest.start_date)}`} color="#059669" />
-            {interest.notes && (
-              <span style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 11 }}>{interest.notes}</span>
-            )}
-            {activeForm === null && (
-              <button
-                onClick={() => setActiveForm({ type: 'close-interest', interest })}
-                style={{ ...btnLink, color: '#dc2626', fontSize: 11 }}
-              >
-                Close
-              </button>
-            )}
+          <div key={interest.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 600, color: 'var(--mantine-color-text, #111)', minWidth: 140 }}>{interest.company_detail.name}</span>
+              <Badge label={`since ${fmtDate(interest.start_date)}`} color="#059669" />
+              {interest.notes && (
+                <span style={{ color: 'var(--mantine-color-dimmed, #9ca3af)', fontSize: 11 }}>{interest.notes}</span>
+              )}
+              {activeForm === null && (
+                <>
+                  <button
+                    onClick={() => setActiveForm({ type: 'edit-interest', interest })}
+                    style={{ ...btnLink, fontSize: 11 }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setActiveForm({ type: 'close-interest', interest })}
+                    style={{ ...btnLink, color: '#dc2626', fontSize: 11 }}
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
             {typeof activeForm === 'object' && activeForm !== null &&
               activeForm.type === 'close-interest' && activeForm.interest.id === interest.id && (
               <CloseInterestForm
                 apiBase={apiBase}
                 interest={interest}
+                onDone={afterFormDone}
+                onCancel={() => setActiveForm(null)}
+              />
+            )}
+            {typeof activeForm === 'object' && activeForm !== null &&
+              activeForm.type === 'edit-interest' && activeForm.interest.id === interest.id && (
+              <EditInterestForm
+                apiBase={apiBase}
+                interest={interest}
+                companies={companies}
                 onDone={afterFormDone}
                 onCancel={() => setActiveForm(null)}
               />
