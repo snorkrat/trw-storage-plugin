@@ -71,8 +71,12 @@ class TransferCustodySerializer(serializers.Serializer):
     """
     Used for the /transfer/ action.
     Closes the current active custodian record and opens a new one.
+    Supports separate old_end_date / new_start_date, with fallback to
+    the legacy transfer_date field for backwards compatibility.
     """
     stock_item = serializers.IntegerField()
     new_company = serializers.IntegerField(help_text='InvenTree company ID of the incoming custodian')
-    transfer_date = serializers.DateField(help_text='Date the transfer takes effect (defaults to today)')
+    transfer_date = serializers.DateField(required=False, help_text='Legacy: single date for both end and start (use old_end_date / new_start_date instead)')
+    old_end_date = serializers.DateField(required=False, help_text='End date for the outgoing custodian (defaults to today)')
+    new_start_date = serializers.DateField(required=False, help_text='Start date for the incoming custodian (defaults to today)')
     notes = serializers.CharField(required=False, allow_blank=True, default='')

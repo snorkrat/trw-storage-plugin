@@ -157,7 +157,8 @@ function TransferCustodyForm({
   onCancel: () => void;
 }) {
   const [newCompany, setNewCompany] = useState('');
-  const [transferDate, setTransferDate] = useState(today());
+  const [oldEndDate, setOldEndDate] = useState(today());
+  const [newStartDate, setNewStartDate] = useState(today());
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -173,7 +174,8 @@ function TransferCustodyForm({
         body: JSON.stringify({
           stock_item: stockItemId,
           new_company: Number(newCompany),
-          transfer_date: transferDate,
+          old_end_date: oldEndDate,
+          new_start_date: newStartDate,
           notes,
         }),
       });
@@ -205,11 +207,21 @@ function TransferCustodyForm({
         ))}
       </select>
 
-      <label style={labelStyle}>Effective Date</label>
+      <label style={labelStyle}>Old Custodian End Date</label>
       <input
         type="date"
-        value={transferDate}
-        onChange={e => setTransferDate(e.target.value)}
+        value={oldEndDate}
+        onChange={e => setOldEndDate(e.target.value)}
+        style={inputStyle}
+        required
+        max={today()}
+      />
+
+      <label style={labelStyle}>New Custodian Start Date</label>
+      <input
+        type="date"
+        value={newStartDate}
+        onChange={e => setNewStartDate(e.target.value)}
         style={inputStyle}
         required
         max={today()}

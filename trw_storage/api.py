@@ -68,7 +68,10 @@ class TRWCustodianViewSet(viewsets.ModelViewSet):
 
         stock_item_id = data['stock_item']
         new_company_id = data['new_company']
-        transfer_date = data.get('transfer_date') or datetime.date.today()
+        # Support separate dates for old end / new start, falling back to
+        # the legacy single transfer_date field for backwards compatibility.
+        old_end_date = data.get('old_end_date') or data.get('transfer_date') or datetime.date.today()
+        new_start_date = data.get('new_start_date') or data.get('transfer_date') or datetime.date.today()
         notes = data.get('notes', '')
 
         # Close current active custodian if one exists
@@ -78,12 +81,12 @@ class TRWCustodianViewSet(viewsets.ModelViewSet):
         ).first()
 
         if current:
-            if transfer_date < current.start_date:
+            if old_end_date < current.start_date:
                 return Response(
-                    {'detail': 'Transfer date cannot be before the current custodian\'s start date.'},
+                    {'detail': 'Old custodian end date cannot be before the current custodian\'s start date.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            current.end_date = transfer_date
+            current.end_date = old_end_date
             current.full_clean()
             current.save()
 
@@ -91,7 +94,7 @@ class TRWCustodianViewSet(viewsets.ModelViewSet):
         new_custodian = TRWCustodian(
             stock_item_id=stock_item_id,
             company_id=new_company_id,
-            start_date=transfer_date,
+            start_date=new_start_date,
             notes=notes,
             created_by=request.user,
         )
