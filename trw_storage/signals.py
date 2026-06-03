@@ -7,6 +7,13 @@ someone adds them by hand. This handler copies the parent's *active* custodian
 and *active* interests onto the new child, dated from the split day, so billing
 remains continuous.
 
+We hook the creation of the "Split from parent item" tracking entry
+(tracking_type 40) rather than StockItem.post_save: by the time that entry is
+written, both the parent and child stock items fully exist and the parent link
+is established (the child's parent_id is not reliably set at the moment its own
+post_save fires, especially given InvenTree's MPTT tree handling). For a type-40
+entry, `deltas['stockitem']` is the PARENT pk and `item` is the CHILD.
+
 InvenTree's split reduces the parent's quantity and creates the child with the
 split quantity, so billing parent-reduced + child = the original total (no
 double-billing — it closes a previous under-billing gap).
@@ -20,25 +27,33 @@ from django.dispatch import receiver
 
 logger = logging.getLogger('trw_storage')
 
+# InvenTree StockHistoryCode.SPLIT_FROM_PARENT
+SPLIT_FROM_PARENT = 40
 
-@receiver(post_save, sender='stock.StockItem', dispatch_uid='trw_storage_inherit_on_split')
+
+@receiver(post_save, sender='stock.StockItemTracking', dispatch_uid='trw_storage_inherit_on_split')
 def inherit_assignments_on_split(sender, instance, created, **kwargs):
     """
-    On creation of a stock item that was split from a parent (parent_id set),
-    copy the parent's active custodian and active interests to the child.
+    On creation of a "split from parent" tracking entry, copy the parent's
+    active custodian and active interests to the newly split child item.
 
     Never raises — a failure here must not block the warehouse split operation.
     """
-    # Only act on brand-new items that were split from a parent.
-    if not created or instance.parent_id is None:
+    if not created or instance.tracking_type != SPLIT_FROM_PARENT:
         return
 
     try:
         from .models import TRWCustodian, TRWInterest
 
-        child_id = instance.pk
-        parent_id = instance.parent_id
-        split_date = datetime.date.today()
+        child_id = instance.item_id
+        parent_id = (instance.deltas or {}).get('stockitem')
+        if not child_id or not parent_id:
+            return
+
+        # Use the tracking entry's own date as the split date (= today for a
+        # live split), falling back to today if unavailable.
+        entry_date = getattr(instance, 'date', None)
+        split_date = entry_date.date() if hasattr(entry_date, 'date') else datetime.date.today()
 
         # ── Custodian ────────────────────────────────────────────────
         # Idempotency: skip if the child somehow already has a custodian.
@@ -84,6 +99,6 @@ def inherit_assignments_on_split(sender, instance, created, **kwargs):
     except Exception:
         # Swallow and log — must never break the split operation.
         logger.exception(
-            'trw_storage: failed to inherit assignments onto split child #%s',
+            'trw_storage: failed to inherit assignments onto split child (tracking #%s)',
             getattr(instance, 'pk', '?'),
         )
