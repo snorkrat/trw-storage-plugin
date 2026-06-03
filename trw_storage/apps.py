@@ -6,4 +6,5 @@ class TRWStorageConfig(AppConfig):
     verbose_name = 'TRW Storage'
 
     def ready(self):
-        pass
+        # Import signal handlers so they register on app load.
+        from . import signals  # noqa: F401
